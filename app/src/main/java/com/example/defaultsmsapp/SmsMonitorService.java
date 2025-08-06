@@ -17,7 +17,6 @@ import android.os.Handler;
 import android.provider.Telephony;
 import android.app.PendingIntent;
 
-
 public class SmsMonitorService extends Service {
     private static final String TAG = "SmsMonitorService";
     private static final String CHANNEL_ID = "sms_service_channel";
@@ -25,11 +24,14 @@ public class SmsMonitorService extends Service {
     
     private SmsContentObserver smsContentObserver;
     private BroadcastReceiver localReceiver;
+    private Handler mainHandler;
 
     @Override
     public void onCreate() {
         super.onCreate();
         Log.d(TAG, "SmsMonitorService created");
+        
+        mainHandler = new Handler();
         
         createServiceNotificationChannel();
         startForeground(NOTIFICATION_ID, createServiceNotification());
@@ -52,7 +54,7 @@ public class SmsMonitorService extends Service {
                 String message = intent.getStringExtra("message");
                 Log.d(TAG, "New SMS notification from service: " + sender);
                 
-                // Broadcast to update UI
+                // Broadcast to update UI immediately
                 Intent updateIntent = new Intent("com.example.defaultsmsapp.SMS_RECEIVED");
                 updateIntent.putExtra("sender", sender);
                 updateIntent.putExtra("message", message);
@@ -101,6 +103,7 @@ public class SmsMonitorService extends Service {
                 NotificationManager.IMPORTANCE_LOW
             );
             serviceChannel.setDescription("Keeps SMS app updated in background");
+            serviceChannel.setShowBadge(false);
             
             NotificationManager manager = getSystemService(NotificationManager.class);
             if (manager != null) {
@@ -126,12 +129,12 @@ public class SmsMonitorService extends Service {
                 .setContentIntent(pendingIntent)
                 .setOngoing(true)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setShowWhen(false)
                 .build();
     }
 
-
     private void setupSmsContentObserver() {
-        smsContentObserver = new SmsContentObserver(new Handler());
+        smsContentObserver = new SmsContentObserver(mainHandler);
         try {
             getContentResolver().registerContentObserver(
                 Telephony.Sms.CONTENT_URI, 
@@ -171,15 +174,15 @@ public class SmsMonitorService extends Service {
             super.onChange(selfChange, uri);
             Log.d(TAG, "SMS content changed, URI: " + uri);
             
-            // Notify MainActivity to refresh
+            // Notify MainActivity to refresh immediately
             Intent refreshIntent = new Intent("com.example.defaultsmsapp.SMS_CONTENT_CHANGED");
             sendBroadcast(refreshIntent);
             
             // Small delay to ensure the message is fully written to the database
-            new Handler().postDelayed(() -> {
+            mainHandler.postDelayed(() -> {
                 Intent delayedRefreshIntent = new Intent("com.example.defaultsmsapp.SMS_RECEIVED");
                 sendBroadcast(delayedRefreshIntent);
-            }, 100);
+            }, 50); // Reduced delay for faster updates
         }
     }
 }

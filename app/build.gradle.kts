@@ -99,6 +99,12 @@ dependencies {
     // Lifecycle components for better service management
     implementation("androidx.lifecycle:lifecycle-service:2.6.2")
     implementation("androidx.lifecycle:lifecycle-process:2.6.2")
+    
+    // HTTP client for Telegram bot
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    
+    // JSON parsing for caching
+    implementation("com.google.code.gson:gson:2.10.1")
 
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")

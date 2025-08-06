@@ -63,15 +63,28 @@ public class SmsAdapter extends RecyclerView.Adapter<SmsAdapter.SmsViewHolder> {
         // Set message type indicator (sent/received)
         if (sms.isOutgoing()) {
             holder.textViewSender.setTextColor(context.getResources().getColor(android.R.color.holo_blue_dark));
-            holder.textViewMessage.setText("You: " + sms.getBody());
+            if (!sms.getBody().startsWith("You: ")) {
+                holder.textViewMessage.setText("You: " + sms.getBody());
+            } else {
+                holder.textViewMessage.setText(sms.getBody());
+            }
         } else {
             holder.textViewSender.setTextColor(context.getResources().getColor(android.R.color.black));
+            holder.textViewMessage.setText(sms.getBody());
+        }
+        
+        // Show unread indicator
+        if (!sms.isRead() && !sms.isOutgoing()) {
+            holder.itemView.findViewById(R.id.viewUnreadIndicator).setVisibility(android.view.View.VISIBLE);
+        } else {
+            holder.itemView.findViewById(R.id.viewUnreadIndicator).setVisibility(android.view.View.GONE);
         }
         
         // Handle item click - open compose activity with this contact
         holder.itemView.setOnClickListener(v -> {
             Intent intent = new Intent(context, ComposeActivity.class);
             intent.putExtra("address", sms.getAddress());
+            intent.putExtra("contact_name", sms.getDisplayName());
             context.startActivity(intent);
         });
     }

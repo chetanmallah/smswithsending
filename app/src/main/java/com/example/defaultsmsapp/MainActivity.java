@@ -1,314 +1,3 @@
-// package com.example.defaultsmsapp;
-
-// import android.Manifest;
-// import android.app.role.RoleManager;
-// import android.content.BroadcastReceiver;
-// import android.content.Context;
-// import android.content.Intent;
-// import android.content.IntentFilter;
-// import android.content.pm.PackageManager;
-// import android.database.Cursor;
-// import android.net.Uri;
-// import android.os.Build;
-// import android.os.Bundle;
-// import android.provider.Telephony;
-// import android.util.Log;
-// import android.widget.Toast;
-
-// import androidx.annotation.NonNull;
-// import androidx.appcompat.app.AlertDialog;
-// import androidx.appcompat.app.AppCompatActivity;
-// import androidx.core.app.ActivityCompat;
-// import androidx.core.content.ContextCompat;
-// import androidx.recyclerview.widget.LinearLayoutManager;
-// import androidx.recyclerview.widget.RecyclerView;
-
-// import com.google.android.material.floatingactionbutton.FloatingActionButton;
-
-// import java.util.ArrayList;
-// import java.util.Collections;
-// import java.util.HashMap;
-// import java.util.List;
-// import java.util.Map;
-
-// public class MainActivity extends AppCompatActivity {
-//     private static final String TAG = "MainActivity";
-//     private static final int PERMISSION_REQUEST_CODE = 100;
-//     private static final int DEFAULT_SMS_REQUEST_CODE = 101;
-    
-//     private RecyclerView recyclerView;
-//     private SmsAdapter smsAdapter;
-//     private List<SmsModel> smsList;
-//     private FloatingActionButton fabCompose;
-    
-//     private BroadcastReceiver smsRefreshReceiver;
-    
-//     private final String[] REQUIRED_PERMISSIONS = {
-//         Manifest.permission.READ_SMS,
-//         Manifest.permission.SEND_SMS,
-//         Manifest.permission.RECEIVE_SMS,
-//         Manifest.permission.READ_CONTACTS,
-//         Manifest.permission.READ_PHONE_STATE
-//     };
-
-//     @Override
-//     protected void onCreate(Bundle savedInstanceState) {
-//         super.onCreate(savedInstanceState);
-//         setContentView(R.layout.activity_main);
-        
-//         initViews();
-//         setupSmsRefreshReceiver();
-//         checkPermissionsAndSetupApp();
-//     }
-    
-//     private void initViews() {
-//         recyclerView = findViewById(R.id.recyclerViewSms);
-//         fabCompose = findViewById(R.id.fabCompose);
-        
-//         smsList = new ArrayList<>();
-//         smsAdapter = new SmsAdapter(this, smsList);
-        
-//         recyclerView.setLayoutManager(new LinearLayoutManager(this));
-//         recyclerView.setAdapter(smsAdapter);
-        
-//         fabCompose.setOnClickListener(v -> {
-//             Intent intent = new Intent(this, ComposeActivity.class);
-//             startActivity(intent);
-//         });
-//     }
-    
-//     private void setupSmsRefreshReceiver() {
-//         smsRefreshReceiver = new BroadcastReceiver() {
-//             @Override
-//             public void onReceive(Context context, Intent intent) {
-//                 Log.d(TAG, "SMS refresh broadcast received");
-//                 loadSmsMessages();
-//             }
-//         };
-        
-//         IntentFilter filter = new IntentFilter();
-//         filter.addAction("com.example.defaultsmsapp.SMS_RECEIVED");
-//         filter.addAction("com.example.defaultsmsapp.MMS_RECEIVED");
-//         registerReceiver(smsRefreshReceiver, filter);
-//     }
-    
-//     private void checkPermissionsAndSetupApp() {
-//         if (!hasAllPermissions()) {
-//             requestPermissions();
-//         } else {
-//             checkDefaultSmsApp();
-//         }
-//     }
-    
-//     private boolean hasAllPermissions() {
-//         for (String permission : REQUIRED_PERMISSIONS) {
-//             if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
-//                 return false;
-//             }
-//         }
-//         return true;
-//     }
-    
-//     private void requestPermissions() {
-//         ActivityCompat.requestPermissions(this, REQUIRED_PERMISSIONS, PERMISSION_REQUEST_CODE);
-//     }
-    
-//     @Override
-//     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-//         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        
-//         if (requestCode == PERMISSION_REQUEST_CODE) {
-//             boolean allGranted = true;
-//             for (int result : grantResults) {
-//                 if (result != PackageManager.PERMISSION_GRANTED) {
-//                     allGranted = false;
-//                     break;
-//                 }
-//             }
-            
-//             if (allGranted) {
-//                 checkDefaultSmsApp();
-//             } else {
-//                 showPermissionDeniedDialog();
-//             }
-//         }
-//     }
-    
-//     private void showPermissionDeniedDialog() {
-//         new AlertDialog.Builder(this)
-//             .setTitle("Permissions Required")
-//             .setMessage("This app needs SMS and Contacts permissions to function properly.")
-//             .setPositiveButton("Grant", (dialog, which) -> requestPermissions())
-//             .setNegativeButton("Exit", (dialog, which) -> finish())
-//             .setCancelable(false)
-//             .show();
-//     }
-    
-//     private void checkDefaultSmsApp() {
-//         if (!isDefaultSmsApp()) {
-//             showSetDefaultSmsDialog();
-//         } else {
-//             loadSmsMessages();
-//         }
-//     }
-    
-//     private boolean isDefaultSmsApp() {
-//         return getPackageName().equals(Telephony.Sms.getDefaultSmsPackage(this));
-//     }
-    
-//     private void showSetDefaultSmsDialog() {
-//         new AlertDialog.Builder(this)
-//             .setTitle("Set as Default SMS App")
-//             .setMessage("To receive and send SMS messages, this app needs to be set as your default SMS app.")
-//             .setPositiveButton("Set Default", (dialog, which) -> requestDefaultSmsApp())
-//             .setNegativeButton("Cancel", (dialog, which) -> {
-//                 Toast.makeText(this, "App requires default SMS permission to function", Toast.LENGTH_LONG).show();
-//                 loadSmsMessages(); // Still allow reading existing messages
-//             })
-//             .setCancelable(false)
-//             .show();
-//     }
-    
-//     private void requestDefaultSmsApp() {
-//         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-//             RoleManager roleManager = getSystemService(RoleManager.class);
-//             if (roleManager != null && roleManager.isRoleAvailable(RoleManager.ROLE_SMS)) {
-//                 Intent roleRequestIntent = roleManager.createRequestRoleIntent(RoleManager.ROLE_SMS);
-//                 startActivityForResult(roleRequestIntent, DEFAULT_SMS_REQUEST_CODE);
-//             }
-//         } else {
-//             Intent intent = new Intent(Telephony.Sms.Intents.ACTION_CHANGE_DEFAULT);
-//             intent.putExtra(Telephony.Sms.Intents.EXTRA_PACKAGE_NAME, getPackageName());
-//             startActivityForResult(intent, DEFAULT_SMS_REQUEST_CODE);
-//         }
-//     }
-    
-//     @Override
-//     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-//         super.onActivityResult(requestCode, resultCode, data);
-        
-//         if (requestCode == DEFAULT_SMS_REQUEST_CODE) {
-//             if (isDefaultSmsApp()) {
-//                 Toast.makeText(this, "App is now the default SMS app", Toast.LENGTH_SHORT).show();
-//             } else {
-//                 Toast.makeText(this, "App was not set as default SMS app", Toast.LENGTH_SHORT).show();
-//             }
-//             loadSmsMessages();
-//         }
-//     }
-    
-//     private void loadSmsMessages() {
-//         smsList.clear();
-        
-//         if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_SMS) != PackageManager.PERMISSION_GRANTED) {
-//             Toast.makeText(this, "SMS permission not granted", Toast.LENGTH_SHORT).show();
-//             return;
-//         }
-        
-//         Uri smsUri = Uri.parse("content://sms/");
-//         String[] projection = {
-//             Telephony.Sms._ID,
-//             Telephony.Sms.ADDRESS,
-//             Telephony.Sms.BODY,
-//             Telephony.Sms.DATE,
-//             Telephony.Sms.TYPE,
-//             Telephony.Sms.READ
-//         };
-        
-//         try (Cursor cursor = getContentResolver().query(
-//             smsUri, 
-//             projection, 
-//             null, 
-//             null, 
-//             Telephony.Sms.DATE + " DESC"
-//         )) {
-            
-//             if (cursor != null && cursor.moveToFirst()) {
-//                 Map<String, List<SmsModel>> conversations = new HashMap<>();
-                
-//                 do {
-//                     long id = cursor.getLong(cursor.getColumnIndexOrThrow(Telephony.Sms._ID));
-//                     String address = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.ADDRESS));
-//                     String body = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.BODY));
-//                     long date = cursor.getLong(cursor.getColumnIndexOrThrow(Telephony.Sms.DATE));
-//                     int type = cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Sms.TYPE));
-//                     boolean isRead = cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Sms.READ)) == 1;
-                    
-//                     String contactName = getContactName(address);
-                    
-//                     SmsModel sms = new SmsModel(id, address, body, date, type, isRead, contactName);
-                    
-//                     // Group by address for conversations
-//                     conversations.computeIfAbsent(address, k -> new ArrayList<>()).add(sms);
-                    
-//                 } while (cursor.moveToNext());
-                
-//                 // Add the latest message from each conversation
-//                 for (List<SmsModel> conversation : conversations.values()) {
-//                     if (!conversation.isEmpty()) {
-//                         // Sort by date and take the latest
-//                         Collections.sort(conversation, (a, b) -> Long.compare(b.getDate(), a.getDate()));
-//                         smsList.add(conversation.get(0));
-//                     }
-//                 }
-                
-//                 // Sort all conversations by latest message date
-//                 Collections.sort(smsList, (a, b) -> Long.compare(b.getDate(), a.getDate()));
-//             }
-//         } catch (Exception e) {
-//             Log.e(TAG, "Error loading SMS messages", e);
-//             Toast.makeText(this, "Error loading messages", Toast.LENGTH_SHORT).show();
-//         }
-        
-//         smsAdapter.notifyDataSetChanged();
-//         Log.d(TAG, "Loaded " + smsList.size() + " SMS conversations");
-//     }
-    
-//     private String getContactName(String phoneNumber) {
-//         if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
-//             return phoneNumber;
-//         }
-        
-//         Uri uri = Uri.withAppendedPath(android.provider.ContactsContract.PhoneLookup.CONTENT_FILTER_URI, 
-//             Uri.encode(phoneNumber));
-//         String[] projection = {android.provider.ContactsContract.PhoneLookup.DISPLAY_NAME};
-        
-//         try (Cursor cursor = getContentResolver().query(uri, projection, null, null, null)) {
-//             if (cursor != null && cursor.moveToFirst()) {
-//                 return cursor.getString(0);
-//             }
-//         } catch (Exception e) {
-//             Log.e(TAG, "Error getting contact name", e);
-//         }
-        
-//         return phoneNumber;
-//     }
-    
-//     @Override
-//     protected void onResume() {
-//         super.onResume();
-//         if (hasAllPermissions()) {
-//             loadSmsMessages();
-//         }
-//     }
-    
-//     @Override
-//     protected void onDestroy() {
-//         super.onDestroy();
-//         if (smsRefreshReceiver != null) {
-//             unregisterReceiver(smsRefreshReceiver);
-//         }
-//     }
-    
-//     public void refreshMessages() {
-//         loadSmsMessages();
-//     }
-// }
-
-
-// uppar wala ok hai but new modification laa rhae hai . uppar wala old defautl sms k liye ok hai 
-
-
 package com.example.defaultsmsapp;
 
 import android.Manifest;
@@ -327,6 +16,7 @@ import android.util.Log;
 import android.widget.Toast;
 import android.os.Handler;
 import android.content.SharedPreferences;
+import android.view.View;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
@@ -344,6 +34,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
@@ -351,23 +43,31 @@ public class MainActivity extends AppCompatActivity {
     private static final int DEFAULT_SMS_REQUEST_CODE = 101;
     private static final String PREFS_NAME = "SmsAppPrefs";
     private static final String KEY_FIRST_LAUNCH = "first_launch";
+    private static final int PAGE_SIZE = 50;
     
     private RecyclerView recyclerView;
     private SmsAdapter smsAdapter;
     private List<SmsModel> smsList;
     private FloatingActionButton fabCompose;
     private SwipeRefreshLayout swipeRefreshLayout;
+    private View layoutEmpty;
     
     private BroadcastReceiver smsRefreshReceiver;
-    private Handler refreshHandler;
-    private Runnable refreshRunnable;
+    private Handler mainHandler;
+    private ExecutorService executorService;
+    
+    private boolean isLoading = false;
+    private boolean hasMoreData = true;
+    private int currentOffset = 0;
+    private SmsCache smsCache;
     
     private final String[] REQUIRED_PERMISSIONS = {
         Manifest.permission.READ_SMS,
         Manifest.permission.SEND_SMS,
         Manifest.permission.RECEIVE_SMS,
         Manifest.permission.READ_CONTACTS,
-        Manifest.permission.READ_PHONE_STATE
+        Manifest.permission.READ_PHONE_STATE,
+        Manifest.permission.INTERNET
     };
 
     @Override
@@ -375,27 +75,34 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         
-        initViews();
+        initializeComponents();
+        setupViews();
         setupSmsRefreshReceiver();
         setupSwipeRefresh();
+        setupPagination();
         checkPermissionsAndSetupApp();
         
         // Start the monitoring service
         startSmsMonitorService();
-        
-        // Setup periodic refresh as backup
-        setupPeriodicRefresh();
     }
     
-    private void initViews() {
+    private void initializeComponents() {
+        mainHandler = new Handler();
+        executorService = Executors.newFixedThreadPool(3);
+        smsCache = new SmsCache(this);
+        smsList = new ArrayList<>();
+    }
+    
+    private void setupViews() {
         recyclerView = findViewById(R.id.recyclerViewSms);
         fabCompose = findViewById(R.id.fabCompose);
         swipeRefreshLayout = findViewById(R.id.swipeRefreshLayout);
+        layoutEmpty = findViewById(R.id.layoutEmpty);
         
-        smsList = new ArrayList<>();
         smsAdapter = new SmsAdapter(this, smsList);
         
-        recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        LinearLayoutManager layoutManager = new LinearLayoutManager(this);
+        recyclerView.setLayoutManager(layoutManager);
         recyclerView.setAdapter(smsAdapter);
         
         fabCompose.setOnClickListener(v -> {
@@ -407,8 +114,7 @@ public class MainActivity extends AppCompatActivity {
     private void setupSwipeRefresh() {
         if (swipeRefreshLayout != null) {
             swipeRefreshLayout.setOnRefreshListener(() -> {
-                loadSmsMessages();
-                swipeRefreshLayout.setRefreshing(false);
+                refreshMessages();
             });
             
             swipeRefreshLayout.setColorSchemeResources(
@@ -418,6 +124,26 @@ public class MainActivity extends AppCompatActivity {
                 android.R.color.holo_red_light
             );
         }
+    }
+    
+    private void setupPagination() {
+        recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+                super.onScrolled(recyclerView, dx, dy);
+                
+                LinearLayoutManager layoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
+                if (layoutManager != null && !isLoading && hasMoreData) {
+                    int visibleItemCount = layoutManager.getChildCount();
+                    int totalItemCount = layoutManager.getItemCount();
+                    int firstVisibleItemPosition = layoutManager.findFirstVisibleItemPosition();
+                    
+                    if ((visibleItemCount + firstVisibleItemPosition) >= totalItemCount - 5) {
+                        loadMoreMessages();
+                    }
+                }
+            }
+        });
     }
     
     private void setupSmsRefreshReceiver() {
@@ -431,13 +157,13 @@ public class MainActivity extends AppCompatActivity {
                     "com.example.defaultsmsapp.SMS_CONTENT_CHANGED".equals(action) ||
                     "com.example.defaultsmsapp.MMS_RECEIVED".equals(action)) {
                     
-                    // Add small delay to ensure database is updated
-                    new Handler().postDelayed(() -> {
-                        loadSmsMessages();
+                    // Immediate UI update for new messages
+                    mainHandler.post(() -> {
+                        refreshMessages();
                         if (swipeRefreshLayout != null) {
                             swipeRefreshLayout.setRefreshing(false);
                         }
-                    }, 200);
+                    });
                 }
             }
         };
@@ -449,21 +175,6 @@ public class MainActivity extends AppCompatActivity {
         filter.setPriority(1000);
         
         registerReceiver(smsRefreshReceiver, filter);
-    }
-    
-    private void setupPeriodicRefresh() {
-        refreshHandler = new Handler();
-        refreshRunnable = new Runnable() {
-            @Override
-            public void run() {
-                if (hasAllPermissions() && isDefaultSmsApp()) {
-                    loadSmsMessages();
-                }
-                // Refresh every 30 seconds as backup
-                refreshHandler.postDelayed(this, 30000);
-            }
-        };
-        refreshHandler.postDelayed(refreshRunnable, 30000);
     }
     
     private void startSmsMonitorService() {
@@ -496,7 +207,6 @@ public class MainActivity extends AppCompatActivity {
     }
     
     private void requestPermissions() {
-        // Add notification permission for Android 13+
         List<String> permissionsToRequest = new ArrayList<>();
         for (String permission : REQUIRED_PERMISSIONS) {
             if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
@@ -557,10 +267,10 @@ public class MainActivity extends AppCompatActivity {
                 showSetDefaultSmsDialog();
                 prefs.edit().putBoolean(KEY_FIRST_LAUNCH, false).apply();
             } else {
-                loadSmsMessages(); // Still show existing messages
+                loadInitialMessages(); // Load messages immediately
             }
         } else {
-            loadSmsMessages();
+            loadInitialMessages(); // Load messages immediately
             startSmsMonitorService();
         }
     }
@@ -576,7 +286,7 @@ public class MainActivity extends AppCompatActivity {
             .setPositiveButton("Set Default", (dialog, which) -> requestDefaultSmsApp())
             .setNegativeButton("Not Now", (dialog, which) -> {
                 Toast.makeText(this, "You can set as default later in Settings", Toast.LENGTH_LONG).show();
-                loadSmsMessages(); // Still allow reading existing messages
+                loadInitialMessages(); // Still load existing messages
             })
             .setCancelable(false)
             .show();
@@ -607,29 +317,87 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 Toast.makeText(this, "App was not set as default SMS app", Toast.LENGTH_SHORT).show();
             }
-            loadSmsMessages();
+            loadInitialMessages();
         }
     }
     
-    private void loadSmsMessages() {
-        new Thread(() -> {
-            List<SmsModel> newSmsList = loadSmsFromDatabase();
-            
-            runOnUiThread(() -> {
+    private void loadInitialMessages() {
+        currentOffset = 0;
+        hasMoreData = true;
+        
+        // First try to load from cache for instant display
+        List<SmsModel> cachedMessages = smsCache.getCachedMessages(PAGE_SIZE);
+        if (!cachedMessages.isEmpty()) {
+            mainHandler.post(() -> {
                 smsList.clear();
-                smsList.addAll(newSmsList);
+                smsList.addAll(cachedMessages);
                 smsAdapter.notifyDataSetChanged();
+                updateEmptyState();
+                Log.d(TAG, "Loaded " + cachedMessages.size() + " cached messages");
+            });
+        }
+        
+        // Then load fresh data in background
+        loadSmsMessages(true);
+    }
+    
+    private void refreshMessages() {
+        currentOffset = 0;
+        hasMoreData = true;
+        loadSmsMessages(true);
+    }
+    
+    private void loadMoreMessages() {
+        if (!isLoading && hasMoreData) {
+            currentOffset += PAGE_SIZE;
+            loadSmsMessages(false);
+        }
+    }
+    
+    private void loadSmsMessages(boolean isRefresh) {
+        if (isLoading) return;
+        
+        isLoading = true;
+        
+        if (swipeRefreshLayout != null && isRefresh) {
+            swipeRefreshLayout.setRefreshing(true);
+        }
+        
+        executorService.execute(() -> {
+            List<SmsModel> newMessages = loadSmsFromDatabase(currentOffset, PAGE_SIZE);
+            
+            mainHandler.post(() -> {
+                isLoading = false;
                 
-                if (swipeRefreshLayout != null && swipeRefreshLayout.isRefreshing()) {
+                if (swipeRefreshLayout != null) {
                     swipeRefreshLayout.setRefreshing(false);
                 }
                 
-                Log.d(TAG, "UI updated with " + smsList.size() + " SMS conversations");
+                if (isRefresh) {
+                    smsList.clear();
+                    currentOffset = 0;
+                }
+                
+                if (newMessages.isEmpty()) {
+                    hasMoreData = false;
+                } else {
+                    smsList.addAll(newMessages);
+                    
+                    // Cache the messages for faster loading next time
+                    if (isRefresh) {
+                        smsCache.cacheMessages(newMessages);
+                    }
+                }
+                
+                smsAdapter.notifyDataSetChanged();
+                updateEmptyState();
+                
+                Log.d(TAG, "Loaded " + newMessages.size() + " messages, total: " + smsList.size());
             });
-        }).start();
+        });
     }
     
-    private List<SmsModel> loadSmsFromDatabase() {
+    private List<SmsModel> loadSmsFromDatabase(int offset, int limit) {
         List<SmsModel> messages = new ArrayList<>();
         
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_SMS) != PackageManager.PERMISSION_GRANTED) {
@@ -652,7 +420,7 @@ public class MainActivity extends AppCompatActivity {
             projection, 
             null, 
             null, 
-            Telephony.Sms.DATE + " DESC LIMIT 1000"  // Limit for performance
+            Telephony.Sms.DATE + " DESC LIMIT " + limit + " OFFSET " + offset
         )) {
             
             if (cursor != null && cursor.moveToFirst()) {
@@ -717,14 +485,28 @@ public class MainActivity extends AppCompatActivity {
         return phoneNumber;
     }
     
+    private void updateEmptyState() {
+        if (layoutEmpty != null) {
+            if (smsList.isEmpty()) {
+                layoutEmpty.setVisibility(View.VISIBLE);
+                recyclerView.setVisibility(View.GONE);
+            } else {
+                layoutEmpty.setVisibility(View.GONE);
+                recyclerView.setVisibility(View.VISIBLE);
+            }
+        }
+    }
+    
     @Override
     protected void onResume() {
         super.onResume();
         if (hasAllPermissions()) {
-            loadSmsMessages();
+            // Only refresh if we don't have recent data
+            if (smsList.isEmpty() || System.currentTimeMillis() - smsCache.getLastUpdateTime() > 30000) {
+                loadInitialMessages();
+            }
         }
         
-        // Handle incoming intent (from notification)
         handleIncomingIntent();
     }
     
@@ -734,7 +516,6 @@ public class MainActivity extends AppCompatActivity {
             String sender = intent.getStringExtra("sender");
             Log.d(TAG, "Opened from notification for sender: " + sender);
             
-            // Optionally scroll to the conversation or highlight it
             // Clear the intent extras to prevent repeated handling
             intent.removeExtra("sender");
         }
@@ -752,29 +533,22 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         
-        if (refreshHandler != null && refreshRunnable != null) {
-            refreshHandler.removeCallbacks(refreshRunnable);
+        if (executorService != null) {
+            executorService.shutdown();
         }
     }
     
     @Override
-    protected void onPause() {
-        super.onPause();
-        // Don't stop the service when pausing - we want background monitoring
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleIncomingIntent();
     }
     
     public void refreshMessages() {
         if (swipeRefreshLayout != null) {
             swipeRefreshLayout.setRefreshing(true);
         }
-        loadSmsMessages();
-    }
-    
-    // Method to handle deep linking or external intents
-    @Override
-    protected void onNewIntent(Intent intent) {
-        super.onNewIntent(intent);
-        setIntent(intent);
-        handleIncomingIntent();
+        refreshMessages();
     }
 }
